@@ -8,8 +8,12 @@ import plotly.graph_objects as go
 import math
 from sklearn import metrics
 
+
 # Simple Linear Regression
 from sklearn.linear_model import LinearRegression
+
+# Polynomial Regression
+from sklearn.preprocessing import PolynomialFeatures
 
 
 # Multiple Linear Regression
@@ -207,6 +211,8 @@ def simpleLinearRegression(df):
 
     print("Average Accuracy: ", mean/10)
 
+    print("R^2 Score: ", bestReg.score(dates, prices))
+
     # Plot Predicted VS Actual Data
     plt.plot(xtest, ytest, color='green', linewidth=1,
              label='Actual Price')  # plotting the initial datapoints
@@ -218,60 +224,38 @@ def simpleLinearRegression(df):
     plt.show()
 
 
-def plotMultipleRegressionLine(df, coeff):
-    date_close = df[['Date', 'Open', 'High', 'Low', 'Volume', 'Close']]
-    date_close.index = date_close['Date']
-    plt.xlabel("date")
-    plt.ylabel("$ price")
+def polynomialRegression(df):
+    dates = []
+    for x in range(0, len(df["Date"])):
+        dates.append(x)
 
-    print("Coefficients: ", coeff)
-    plt.plot(date_close.index, date_close['Close'])
-    plt.plot(date_close.index, (coeff[0] * 0 + coeff[1] * date_close['Open'] +
-             coeff[2] * date_close['High'] + coeff[3] * date_close['Low'] + coeff[4] * date_close['Volume']), '-')
-    ax = plt.axes()
-    ax.grid()
+    dates = np.array(dates)
 
-    plt.show()
+    prices = df['Close']
 
+    for i in range(2, 5):
+        poly = PolynomialFeatures(degree=i, include_bias=False)
+        poly_features = poly.fit_transform(dates.reshape(-1, 1))
+        xtrain, xtest, ytrain, ytest = train_test_split(
+            poly_features, prices, test_size=0.2)
 
-def testLinearRegression(df):
-    dataset = df[['Open', 'Low', 'Close']]
-    print(dataset['Open'].shape)
-    print(dataset['Close'].shape)
-    model1 = LinearRegression()
+        poly_reg_model = LinearRegression().fit(xtrain, ytrain)
+        y_predicted = poly_reg_model.predict(poly_features)
 
-    # X = dataset['Open'].values.reshape(1, -1)[0]
+        print("R^2 Score: ", poly_reg_model.score(poly_features, prices))
 
-    X = np.column_stack(
-        [np.ones(len(dataset['Open'])), dataset["Open"].values.reshape(1, -1)[0], dataset["Low"].values.reshape(1, -1)[0]])
-    y = dataset["Close"]
-    model1.fit(X, y)
-
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-
-    # ax.plot3D(xline, yline, zline, 'gray')
-
-    xdata = dataset['Open']
-    ydata = dataset['Low']
-    zdata = dataset['Close']
-    ax.scatter3D(xdata, ydata, zdata, cmap='Greens')
-    # plt.plot(dataset['Open'].values, dataset['Close'].values, '.')
-    # plt.plot(dataset['Open'].values, model1.predict(X), '-')
-    plt.show()
+        plt.title("Polynomial Regression", size=16)
+        plt.plot(dates, prices, '-')
+        plt.plot(dates, y_predicted, c="red")
+        plt.show()
 
 
 # Fetch data for Panasonic
 df_6752 = fetchCompanyData(6752, df)
 # plotData(df_6752)
 
-# Multiple Linear Regression
-# coeff, predict_y = multipleLinearRegression(df_6752)
-
-# plotMultipleRegressionLine(df_6752, coeff, )
-
-# testLinearRegression(df_6752)
 simpleLinearRegression(df_6752)
+polynomialRegression(df_6752)
 
 
 # Plot data
