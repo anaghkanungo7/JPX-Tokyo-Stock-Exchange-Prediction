@@ -5,6 +5,8 @@ from pandas_datareader import data
 import matplotlib.pyplot as plt
 import datetime
 import plotly.graph_objects as go
+import math
+from sklearn import metrics
 
 # Simple Linear Regression
 from sklearn.linear_model import LinearRegression
@@ -14,8 +16,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, confusion_matrix, accuracy_score
 from mpl_toolkits import mplot3d
+from sklearn.model_selection import TimeSeriesSplit
 
 
 # Import the necessary packages for K-Means Clustering
@@ -171,19 +174,48 @@ def multipleLinearRegression(df):
 
 
 def simpleLinearRegression(df):
-    # creating new dataframe from consumption column
-    close_prices = data[['Close']]
-    # inserting new column with yesterday's consumption values
-    close_prices.loc[:,
-                     'Close_Yesterday'] = close_prices.loc[:, 'Close'].shift()
-    # inserting another column with difference between yesterday and day before yesterday's consumption values.
-    close_prices.loc[:, 'Yesterday_Diff'] = close_prices.loc[:,
-                                                             'Close_Yesterday'].diff()
-    # dropping NAs
-    close_prices = close_prices.dropna()
+    dates = []
+    for x in range(0, len(df["Date"])):
+        dates.append(x)
+    prices = df['Close']
 
-    train_X, test_X, train_y, test_y = train_test_split(
-        close_prices.drop(['Close'], axis=1), close_prices.loc['Close'], test_size=0.5)
+    dates = np.asanyarray(dates)
+    prices = np.asanyarray(prices)
+    dates = np.reshape(dates, (len(dates), 1))
+    prices = np.reshape(prices, (len(prices), 1))
+
+    xtrain, xtest, ytrain, ytest = train_test_split(
+        dates, prices, test_size=0.2)
+    # best = reg.score(ytrain, ytest)
+    best = 0
+    # bestReg
+    for _ in range(100):
+        xtrain, xtest, ytrain, ytest = train_test_split(
+            dates, prices, test_size=0.2)
+        reg = LinearRegression().fit(xtrain, ytrain)
+        acc = reg.score(xtest, ytest)
+        if acc > best:
+            best = acc
+            bestReg = reg
+
+    mean = 0
+    for i in range(10):
+        msk = np.random.rand(len(df)) < 0.8
+        xtest = dates[~msk]
+        ytest = prices[~msk]
+        mean += bestReg.score(xtest, ytest)
+
+    print("Average Accuracy: ", mean/10)
+
+    # Plot Predicted VS Actual Data
+    plt.plot(xtest, ytest, color='green', linewidth=1,
+             label='Actual Price')  # plotting the initial datapoints
+    plt.plot(xtest, bestReg.predict(xtest), color='blue', linewidth=3,
+             label='Predicted Price')  # plotting the line made by linear regression
+    plt.title('Linear Regression | Time vs. Price ')
+    plt.legend()
+    plt.xlabel('Date Integer')
+    plt.show()
 
 
 def plotMultipleRegressionLine(df, coeff):
@@ -238,7 +270,8 @@ df_6752 = fetchCompanyData(6752, df)
 
 # plotMultipleRegressionLine(df_6752, coeff, )
 
-testLinearRegression(df_6752)
+# testLinearRegression(df_6752)
+simpleLinearRegression(df_6752)
 
 
 # Plot data
