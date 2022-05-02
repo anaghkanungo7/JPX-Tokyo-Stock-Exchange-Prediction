@@ -18,6 +18,11 @@ from sklearn.preprocessing import PolynomialFeatures
 # SVR
 from sklearn.svm import SVR
 import matplotlib.dates as mdates
+from sklearn.datasets import load_iris
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import GridSearchCV
+from matplotlib.colors import Normalize
+
 
 # LSTM
 # import tensorflow
@@ -398,54 +403,169 @@ def normalizeAndPlotData(df, list_of_companies):
 
 # normalizeAndPlotData(df, list_of_companies)
 
-
-def calculateSVR(df):
-    dates_df = df.copy()
-    # dates_df = dates_df.reset_index()
-    # print(dates_df.head())
-    org_dates = dates_df['Date']
-    print(dates_df['Date'])
-    print(dates_df['Date'].shape)
-    dates_df['Date'] = pd.to_datetime(dates_df['Date'])
-    dates_df['Date'] = dates_df['Date'].map(mdates.date2num)
-    # dates = []
-    # for x in range(0, len(df["Date"])):
-    #     dates.append(x)
-
-    # dates_df = pd.DataFrame(np.hstack([dates, dates_df['Date']]))
-
-    dates = np.array(dates_df['Date'])
-    prices = np.array(df['Close'])
-
-    # Convert to 1D Vector
-    dates = np.reshape(dates, (len(dates), 1))
-    prices = np.reshape(prices, (len(prices), 1))
-
-    svr_rbf = SVR(kernel='rbf', C=1e3, gamma=0.1)
-    # dates = dates.reshape(-1, 1)
-    svr_rbf.fit(dates, prices.ravel())
-
-    plt.figure(figsize=(12, 6))
-    plt.plot(dates, prices, color='black', label='Data')
-    plt.plot(org_dates, svr_rbf.predict(dates), color='red', label='RBF model')
-    plt.xlabel('Date')
-    plt.ylabel('Price')
-    plt.legend()
-    plt.show()
-
-
-calculateSVR(df_6752)
-
-
-def SVR2(df):
+def calculateSVR2(df):
     actual_price = df.tail()
     df = df.head(len(df) - 1)
 
-    dates = []
+    days = []
     close = []
 
     df_days = df.loc[:, 'Date']
     df_close = df.loc[:, 'Close']
 
-    for day in df_days:
-        days.append([])
+    for i in range(len(df_days)):
+        days.append(i)
+
+    for close_price in df_close:
+        close.append(float(close_price))
+
+    days = np.array(days)
+    days = days.reshape(-1, 1)
+    # Create 3 SVR Models
+    # Linear kernel
+    lin_svr = SVR(kernel='linear', C=1000.0)
+    lin_svr.fit(days, close)
+
+    # Polynomial kernel
+    poly_svr = SVR(kernel='poly', C=1000.0, degree=2)
+    poly_svr.fit(days, close)
+
+    # Radial kernel
+    rbf_svr = SVR(kernel='rbf', C=10.0, gamma=0.15)
+    rbf_svr.fit(days, close)
+
+    R_score = rbf_svr.score(days, close)
+    print(R_score)
+
+    # Plot on graph
+    plt.figure(figsize=(16, 8))
+    plt.scatter(days, close, color='red', label='Data')
+    plt.plot(days, rbf_svr.predict(days), color='green', label='RBF Model')
+    plt.plot(days, poly_svr.predict(days),
+             color='blue', label='Polynomial Model')
+    plt.plot(days, lin_svr.predict(days), color='orange', label='Linear Model')
+    plt.legend()
+    plt.show()
+
+
+def calculateRadialBasisSVR(df):
+    actual_price = df.tail()
+    df = df.head(len(df) - 1)
+
+    days = []
+    close = []
+
+    df_days = df.loc[:, 'Date']
+    df_close = df.loc[:, 'Close']
+
+    for i in range(len(df_days)):
+        days.append(i)
+
+    for close_price in df_close:
+        close.append(float(close_price))
+
+    days = np.array(days)
+    days = days.reshape(-1, 1)
+
+    C_parameter = 10
+
+    results = []
+
+    for x in range(C_parameter, 200, 5):
+        C_parameter = x
+        # Radial kernel
+        rbf_svr = SVR(kernel='rbf', C=float(C_parameter), gamma=0.15)
+        rbf_svr.fit(days, close)
+        R_score = rbf_svr.score(days, close)
+        print("R^2 Score when C is " +
+              str(C_parameter) + ": " + str(rbf_svr.score(days, close)))
+
+        #   C -> C_parameter
+        #   R_score -> R_score parameter
+        results.append([C_parameter, R_score])
+
+    return results
+
+
+# radial_basis_accuracy = calculateRadialBasisSVR(df_6752)
+# print(radial_basis_accuracy[0:5])
+# x_val = []
+# y_val = []
+# for x in radial_basis_accuracy:
+#     print(x)
+#     x_val.append(x[0])
+#     y_val.append(x[1])
+
+# print(x_val[0:5])
+# plt.plot(x_val, y_val)
+# plt.xlabel('C Parameter')
+# plt.ylabel('R^2 Score')
+# plt.title('Relation between R^2 Score and C Parameter')
+# plt.show()
+
+# calculateSVR2(df_6752)
+
+def generateRBFHeatmap(df):
+    actual_price = df.tail()
+    df = df.head(len(df) - 1)
+
+    days = []
+    close = []
+
+    df_days = df.loc[:, 'Date']
+    df_close = df.loc[:, 'Close']
+
+    for i in range(len(df_days)):
+        days.append(i)
+
+    for close_price in df_close:
+        close.append(float(close_price))
+
+    days = np.array(days)
+    days = days.reshape(-1, 1)
+
+    # C_range = [10, 100, 200]
+    C_range = np.arange(10, 105, 5)
+    # 19
+
+    # gamma_range = [0.10, 0.5, 1]
+    gamma_range = np.arange(0.1, 1.05, 0.05)
+
+    # param_grid = dict(gamma=gamma_range, C=C_range)
+    # cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
+    # grid = GridSearchCV(SVR(), param_grid=param_grid, cv=cv)
+    # grid.fit(days, close)
+
+    table = np.array([[]])
+    for C_parameter in C_range:
+        row = np.array([])
+        for gamma in gamma_range:
+            rbf_svr = SVR(kernel='rbf', C=float(C_parameter), gamma=gamma)
+            rbf_svr.fit(days, close)
+            R_score = rbf_svr.score(days, close)
+            print("C: ", C_parameter)
+            print("Gamma: ", gamma)
+            print("R_score: ", R_score)
+            row = np.append(row, R_score)
+        table = np.append(table, row)
+
+    table = table.reshape(19, 19)
+    print(table)
+    plt.subplots_adjust(left=0.2, right=0.95, bottom=0.15, top=0.95)
+    plt.imshow(
+        table,
+        interpolation="nearest",
+        cmap=plt.cm.hot,
+        norm=MidpointNormalize(vmin=0.2, midpoint=0.65),
+    )
+    gamma_range = gamma_range.round(4)
+    plt.xlabel("gamma")
+    plt.ylabel("C")
+    plt.colorbar()
+    plt.xticks(np.arange(len(gamma_range)), gamma_range, rotation=45)
+    plt.yticks(np.arange(len(C_range)), C_range)
+    plt.title("Validation accuracy")
+    plt.show()
+
+
+generateRBFHeatmap(df_6752)
