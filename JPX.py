@@ -1,3 +1,4 @@
+from cv2 import split
 import numpy as np
 import pandas as pd
 import mplfinance
@@ -202,54 +203,117 @@ def plotData(df):
 
 #     return coeff, predict_y
 
+# fetchCompanyData(7)
 
-# def simpleLinearRegression(df):
-#     dates = []
-#     for x in range(0, len(df["Date"])):
-#         dates.append(x)
-#     prices = df['Close']
+def splitData(dates, prices):
+    training_data_len = math.floor(len(dates) * 0.8)
 
-#     dates = np.asanyarray(dates)
-#     prices = np.asanyarray(prices)
-#     dates = np.reshape(dates, (len(dates), 1))
-#     prices = np.reshape(prices, (len(prices), 1))
+    # Create training data set
+    train_data = prices[0:training_data_len, :]
 
-#     xtrain, xtest, ytrain, ytest = train_test_split(
-#         dates, prices, test_size=0.2)
-#     # best = reg.score(ytrain, ytest)
-#     best = 0
-#     # bestReg
-#     for _ in range(100):
-#         xtrain, xtest, ytrain, ytest = train_test_split(
-#             dates, prices, test_size=0.2)
-#         reg = LinearRegression().fit(xtrain, ytrain)
-#         acc = reg.score(xtest, ytest)
-#         if acc > best:
-#             best = acc
-#             bestReg = reg
+    # Split into xtrain, ytrain
+    xtrain = []
+    ytrain = []
 
-#     mean = 0
-#     for i in range(10):
-#         msk = np.random.rand(len(df)) < 0.8
-#         xtest = dates[~msk]
-#         ytest = prices[~msk]
-#         mean += bestReg.score(xtest, ytest)
+    print("training data len: ", training_data_len)
+    xtrain = dates[0:training_data_len]
+    xtest = dates[training_data_len:]
+    ytrain = prices[0:training_data_len]
+    ytest = prices[training_data_len:]
+    # Convert into numpy arrays
+    xtrain, ytrain = np.array(xtrain), np.array(ytrain)
+    # Convert to numpy array
+    xtest, ytest = np.array(xtest), np.array(ytest)
 
-#     print("Average Accuracy: ", mean/10)
+    return xtrain, ytrain, xtest, ytest
 
-#     print("R^2 Score: ", bestReg.score(dates, prices))
 
-#     # Plot Predicted VS Actual Data
-#     # plt.plot(xtest, ytest, color='green', linewidth=1,
-#     #          label='Actual Price')  # plotting the initial datapoints
-#     # plt.plot(xtest, bestReg.predict(xtest), color='blue', linewidth=3,
-#     #          label='Predicted Price')  # plotting the line made by linear regression
-#     # plt.title('Linear Regression | Time vs. Price ')
-#     # plt.legend()
-#     # plt.xlabel('Date Integer')
-#     # plt.show()
+def simpleLinearRegression(df):
+    dates = []
+    for x in range(0, len(df["Date"])):
+        dates.append(x)
+    prices = df['Close']
+    print(len(dates), prices.shape)
+    dates = np.asanyarray(dates)
+    prices = np.asanyarray(prices)
+    dates = np.reshape(dates, (len(dates), 1))
+    prices = np.reshape(prices, (len(prices), 1))
+    print(dates.shape, prices.shape)
+    xtrain, xtest, ytrain, ytest = train_test_split(
+        dates, prices, test_size=0.2)
+    # best = reg.score(ytrain, ytest)
+    best = 0
+    # bestReg
+    for _ in range(100):
+        xtrain, xtest, ytrain, ytest = train_test_split(
+            dates, prices, test_size=0.2)
+        reg = LinearRegression().fit(xtrain, ytrain)
+        acc = reg.score(xtest, ytest)
+        if acc > best:
+            best = acc
+            bestReg = reg
 
-#     return bestReg.score(dates, prices)
+    mean = 0
+    for i in range(10):
+        msk = np.random.rand(len(df)) < 0.8
+        xtest = dates[~msk]
+        ytest = prices[~msk]
+        mean += bestReg.score(xtest, ytest)
+
+    print("Average Accuracy: ", mean/10)
+
+    print("R^2 Score: ", bestReg.score(dates, prices))
+
+    # Plot Predicted VS Actual Data
+    # plt.plot(xtest, ytest, color='green', linewidth=1,
+    #          label='Actual Price')  # plotting the initial datapoints
+    # plt.plot(xtest, bestReg.predict(xtest), color='blue', linewidth=3,
+    #          label='Predicted Price')  # plotting the line made by linear regression
+    # plt.title('Linear Regression | Time vs. Price ')
+    # plt.legend()
+    # plt.xlabel('Date Integer')
+    # plt.show()
+
+    return bestReg.score(dates, prices)
+
+
+def simpleLinearRegression2(df):
+    dates = []
+    for x in range(0, len(df["Date"])):
+        dates.append(x)
+    prices = df['Close']
+
+    dates = np.asanyarray(dates)
+    prices = np.asanyarray(prices)
+    dates = np.reshape(dates, (len(dates), 1))
+    prices = np.reshape(prices, (len(prices), 1))
+
+    xtrain, ytrain, xtest, ytest = splitData(dates, prices)
+    print(xtrain.shape, ytrain.shape, xtest.shape, ytest.shape)
+
+    # xtrain, xtest, ytrain, ytest = splitData(dates, prices)
+
+    # best = reg.score(ytrain, ytest)
+    best = 0
+    # bestReg
+    reg = LinearRegression().fit(xtrain, ytrain)
+
+    print("R^2 Score: ", reg.score(xtest, ytest))
+
+    # Plot Predicted VS Actual Data
+    plt.plot(xtest, ytest, color='green', linewidth=1,
+             label='Actual Price')  # plotting the initial datapoints
+    plt.plot(xtest, reg.predict(xtest), color='blue', linewidth=3,
+             label='Predicted Price')  # plotting the line made by linear regression
+    plt.title('Linear Regression | Time vs. Price ')
+    plt.legend()
+    plt.xlabel('Date Integer')
+    plt.show()
+
+    return reg.score(dates, prices)
+
+
+# simpleLinearRegression(df_6752)
 
 
 # def polynomialRegression(df):
@@ -310,11 +374,11 @@ def plotData(df):
 
 
 # Fetch data for Panasonic
-# df_6752 = fetchCompanyData(6752, df)
+df_6752 = fetchCompanyData(6752, df)
 # plotData(df_6752)
 
-# r2score = simpleLinearRegression(df_6752)
-# print(r2score)
+r2score = simpleLinearRegression(df_6752)
+print(r2score)
 
 # myList = polynomialRegression(df_6752)
 # myList = np.insert(myList, 0, r2score)
@@ -345,7 +409,7 @@ def plotData(df):
 
 # --- NEW ---
 # Fetch company data for Panasonic
-df_6752 = fetchCompanyData(6752, df)
+# df_6752 = fetchCompanyData(6752, df)
 
 # SVR
 
@@ -404,7 +468,6 @@ def normalizeAndPlotData(df, list_of_companies):
 # normalizeAndPlotData(df, list_of_companies)
 
 def calculateSVR2(df):
-    actual_price = df.tail()
     df = df.head(len(df) - 1)
 
     days = []
@@ -568,4 +631,4 @@ def generateRBFHeatmap(df):
     plt.show()
 
 
-generateRBFHeatmap(df_6752)
+# generateRBFHeatmap(df_6752)
